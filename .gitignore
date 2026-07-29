@@ -6,3 +6,7 @@ __pycache__/
 venv/
 env/
 .DS_Store
+
+# Scratch / temp agent artifacts
+_writer.py
+/d

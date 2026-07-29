@@ -49,6 +49,31 @@ The goalmouth is divided into 9 target zones:
 
 Follow these steps to run the simulation and verify optimization stats on your device:
 
+### 0. (New) 3D Web Build — On-Device Edge AI (Arm Mali GPU)
+
+The 3D Three.js / WebGL build runs the SAME INT8 TFLite model directly in the
+browser via the TFLite Web runtime (WebAssembly backend with NEON SIMD).
+No server-side inference is performed — inference is fully on-device.
+
+```bash
+# From the repo root. Python 3.x required (only for the static file server).
+python -m http.server 8000
+```
+
+Then open <http://localhost:8000/web/templates/index.html> on:
+
+- Desktop Chrome / Edge (WASM SIMD enabled)
+- Android Chrome on Arm Mali devices (e.g. Samsung Galaxy A04)
+
+Controls: **Click and drag** anywhere on the pitch to flick. A short
+(15 ms) impulse window captures the initial (Vx, Vy) and curve angle, which
+is fed into the Arm-optimized TFLite model. The 3D goalkeeper dives to the
+predicted zone while the ball curves through 3D space via the Magnus effect.
+
+Telemetry debug panel (top-left) shows live Inference Time (target <1.0 ms),
+WebGL FPS (target 60), Touch Sampling Window (15 ms), Predicted vs Actual
+Zone, and shot Status (GOAL / TERS KÖŞE (FEINT) / SAVED / PANENKA).
+
 ### 1. Install Dependencies
 Make sure you have Python 3.10+ installed, then install requirements:
 ```bash
