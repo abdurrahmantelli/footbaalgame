@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Pocket-Keeper AI 3D — Arm On-Device Edge</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: rgba(15, 23, 42, 0.82);
+      --neon-blue: #3b82f6;
+      --neon-green: #22c55e;
+      --neon-red: #ef4444;
+      --neon-amber: #f59e0b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --grid: #334155;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif; color: var(--text); }
+    #app { position: fixed; inset: 0; }
+    canvas { display: block; touch-action: none; }
+
+    /* ===== Debug Panel (Arm Jury Telemetry) ===== */
+    #debug {
+      position: fixed; top: 14px; left: 14px; width: 320px;
+      background: var(--panel); border: 1px solid var(--neon-blue);
+      border-radius: 10px; padding: 12px 14px; backdrop-filter: blur(8px);
+      box-shadow: 0 0 22px rgba(59,130,246,0.18); font-size: 12px; z-index: 10;
+    }
+    #debug h1 { font-size: 14px; letter-spacing: 0.6px; color: var(--neon-blue); margin-bottom: 2px; }
+    #debug h2 { font-size: 10px; color: var(--muted); font-weight: 400; margin-bottom: 10px; letter-spacing: 1px; }
+    #debug .row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed rgba(148,163,184,0.12); }
+    #debug .row:last-child { border-bottom: none; }
+    #debug .k { color: var(--muted); }
+    #debug .v { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
+    #debug .v.ok { color: var(--neon-green); }
+    #debug .v.warn { color: var(--neon-amber); }
+    #debug .v.bad { color: var(--neon-red); }
+    #debug .v.blue { color: var(--neon-blue); }
+    #debug #statusBox { margin-top: 8px; padding: 8px 10px; border-radius: 8px; text-align: center; font-weight: 700; font-size: 15px; background: rgba(30,41,59,0.6); border: 1px solid var(--grid); }
+    #statusBox.goal { color: var(--neon-red); border-color: var(--neon-red); }
+    #statusBox.save { color: var(--neon-green); border-color: var(--neon-green); }
+    #statusBox.feint { color: var(--neon-amber); border-color: var(--neon-amber); }
+    #statusBox.panenka { color: #c084fc; border-color: #c084fc; }
+    #statusBox.miss { color: var(--muted); border-color: var(--muted); }
+
+    /* ===== Prob bars ===== */
+    #probs { margin-top: 10px; }
+    #probs .bar { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+    #probs .lbl { width: 28px; font-size: 10px; color: var(--muted); }
+    #probs .track { flex: 1; height: 6px; background: rgba(51,65,85,0.4); border-radius: 3px; overflow: hidden; }
+    #probs .fill { height: 100%; background: var(--neon-blue); border-radius: 3px; transition: width 0.08s linear; }
+    #probs .pc { width: 30px; font-size: 10px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+
+    /* ===== Hint ===== */
+    #hint {
+      position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+      background: var(--panel); border: 1px solid var(--grid); border-radius: 30px;
+      padding: 10px 22px; font-size: 13px; color: var(--text); z-index: 10;
+      white-space: nowrap; letter-spacing: 0.3px;
+    }
+    #hint b { color: var(--neon-blue); }
+
+    /* ===== Loader ===== */
+    #loader {
+      position: fixed; inset: 0; background: var(--bg); z-index: 100;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    }
+    #loader .ring { width: 56px; height: 56px; border: 4px solid var(--grid); border-top-color: var(--neon-blue); border-radius: 50%; animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loader .msg { color: var(--muted); font-size: 14px; letter-spacing: 0.5px; }
+    #loader .err { color: var(--neon-red); font-size: 12px; max-width: 460px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Debug Panel -->
+  <div id="debug">
+    <h1>POCKET-KEEPER AI 3D</h1>
+    <h2>ARM ON-DEVICE EDGE AI · TFLITE WEB · NEON</h2>
+    <div class="row"><span class="k">Model</span><span class="v blue">INT8 · 4.16 KB</span></div>
+    <div class="row"><span class="k">Inference Time</span><span class="v ok" id="dbgInf">— ms</span></div>
+    <div class="row"><span class="k">Target FPS</span><span class="v" id="dbgFps">— FPS</span></div>
+    <div class="row"><span class="k">Touch Window</span><span class="v blue">15 ms</span></div>
+    <div class="row"><span class="k">Predicted Zone</span><span class="v blue" id="dbgPred">BEKLEMEDE</span></div>
+    <div class="row"><span class="k">Actual Zone</span><span class="v" id="dbgAct">—</span></div>
+    <div class="row"><span class="k">Skor (Gol / Kurtarış / Kaçan)</span><span class="v ok" id="dbgScore">0 / 0 / 0</span></div>
+    <div id="statusBox">HAZIR</div>
+    <div id="probs"></div>
+  </div>
+
+  <div id="hint">ŞUT İÇİN <b>SOL TIKLA SÜRÜKLE</b> · Falso için kavis ver</div>
+
+  <div id="loader">
+    <div class="ring"></div>
+    <div class="msg" id="loadMsg">Arm INT8 model yükleniyor (On-Device)...</div>
+    <div class="err" id="loadErr"></div>
+  </div>
+
+  <!-- Three.js (r160) UMD build -->
+  <!-- TFLite Web runtime (Google Edge AI, WebAssembly backend with NEON SIMD · on-device) -->
+  <script src="static/lib/tf.min.js"></script>
+  <script src="static/lib/tf-tflite.min.js"></script>
+
+  <script type="module" src="static/js/physics.js"></script>
+  <script type="module" src="static/js/keeper_ai.js"></script>
+  <script type="module" src="static/js/scene.js"></script>
+  <script type="module" src="static/js/main.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(registration => console.log('Service Worker registered: ', registration))
+          .catch(error => console.log('Service Worker registration failed: ', error));
+      });
+    }
+  </script>
+</body>
+</html>

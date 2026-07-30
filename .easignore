@@ -1,0 +1,6 @@
+# node_modules'u buluta gönderme (EAS kendi yükler)
+node_modules/
+
+# Android ve WWW klasörlerinin buluta YÜKLENMESİNİ sağla
+!android/
+!www/

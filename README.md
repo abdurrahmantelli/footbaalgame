@@ -49,30 +49,99 @@ The goalmouth is divided into 9 target zones:
 
 Follow these steps to run the simulation and verify optimization stats on your device:
 
-### 0. (New) 3D Web Build — On-Device Edge AI (Arm Mali GPU)
-
-The 3D Three.js / WebGL build runs the SAME INT8 TFLite model directly in the
-browser via the TFLite Web runtime (WebAssembly backend with NEON SIMD).
-No server-side inference is performed — inference is fully on-device.
+### 0. Web Build (Commit: ba2115f)
+This build is optimized for local static server execution using the TFLite Web runtime.
 
 ```bash
-# From the repo root. Python 3.x required (only for the static file server).
+# From the repo root (Commit: ba2115f)
+# Ensure you are on the commit that enables WebGL/WASM support
 python -m http.server 8000
 ```
+Then visit `http://localhost:8000/www/index.html` in your browser. 
+**Note**: Ensure your browser supports WASM SIMD for optimal performance.
 
-Then open <http://localhost:8000/web/templates/index.html> on:
+---
 
-- Desktop Chrome / Edge (WASM SIMD enabled)
-- Android Chrome on Arm Mali devices (e.g. Samsung Galaxy A04)
+# 📱 Mobil Cihaz Kurulum & APK Derleme Rehberi
 
-Controls: **Click and drag** anywhere on the pitch to flick. A short
-(15 ms) impulse window captures the initial (Vx, Vy) and curve angle, which
-is fed into the Arm-optimized TFLite model. The 3D goalkeeper dives to the
-predicted zone while the ball curves through 3D space via the Magnus effect.
+## 1. Web Tabanlı Erişim (WiFi)
+Bilgisayarınızdaki sunucuyu telefonunuzdan görüntülemek için:
+- **Sunucu**: `python -m http.server 8000`
+- **Adres**: `http://<BILGISAYAR_IP>:8000/web/templates/index.html`
 
-Telemetry debug panel (top-left) shows live Inference Time (target <1.0 ms),
-WebGL FPS (target 60), Touch Sampling Window (15 ms), Predicted vs Actual
-Zone, and shot Status (GOAL / TERS KÖŞE (FEINT) / SAVED / PANENKA).
+## 2. Android APK Derleme
+Projeyi yerel bir Android uygulaması olarak çalıştırmak için aşağıdaki adımları izleyin:
+
+### Hazırlık
+```bash
+# 1. Proje bağımlılıklarını kurun
+npm install
+
+# 2. Web projesini derleyin
+npm run build
+
+# 3. Capacitor ile Android projesini senkronize edin
+npx cap sync android
+```
+
+### APK Oluşturma
+```bash
+# 4. Android klasörüne gidin
+cd android
+
+# 5. Gradle ile APK build işlemini başlatın
+gradlew assembleDebug
+```
+- Çıktı dosyasını `android/app/build/outputs/apk/debug/app-debug.apk` konumunda bulabilirsiniz.
+
+## Telefonunuzda Çalıştırma Adımları
+
+### 1. **Sunucu Başlatma**
+```bash
+python -m http.server 8000
+```
+- **Amaç**: Web sunucusu, telefonunuzun erişebileceği statik dosyaları sunar
+
+### 2. **Ağ Bağlantısı**
+- Telefon ve bilgisayar **aynı WiFi ağında** olmalıdır
+- Bilgisayarınızın yerel IP adresini bulun:
+
+**Windows:**
+```bash
+ipconfig
+```
+IPv4 adresini not edin (örn: `192.168.1.100`)
+
+**Mac/Linux:**
+```bash
+ifconfig
+```
+
+### 3. **Telefonunuzdan Erişim**
+Tarayıcınızda şu adrese gidin:
+```
+http://<BILGISAYAR_IP>:8000/web/templates/index.html
+```
+Örnek: `http://192.168.1.100:8000/web/templates/index.html`
+
+### 4. **Kontrol**
+- Dokunmatik ekranda herhangi bir yere tıklayın ve sürükleyin (flick hareketi)
+- Kaleci yapay zeka tahminine göre hareket edecek
+- Debug paneli (mobilde alttan açılır) gerçek zamanlı telemetri gösterir
+
+---
+
+
+
+## 🎯 Ek Bilgiler
+
+- Model boyutu: **4.16 KB** (INT8 Quantized TFLite)
+- Tahmin süresi: **~0.19 ms**
+- Doğruluk: **96.89%**
+- 9 bölge sınıflandırması yapar
+- Arm cihazları için optimize edilmiş
+
+---
 
 ### 1. Install Dependencies
 Make sure you have Python 3.10+ installed, then install requirements:

@@ -1,0 +1,10 @@
+{
+  "name": "Pocket-Keeper AI 3D",
+  "short_name": "Keeper AI",
+  "description": "On-Device Edge AI Football Game",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": []
+}
