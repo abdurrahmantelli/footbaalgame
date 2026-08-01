@@ -152,10 +152,15 @@ function onResolve() {
   dbgAct.textContent = az === -1 ? "KACTI" : ZONE_LABELS[az];
   let saved = false;
   if (az !== -1) {
-    const dist = Math.hypot(ball.x - keeper.x, ball.y - keeper.y);
-    // Kalecinin fiziksel olarak yetişemeyeceği 90/çatal şutları (X köşeleri veya üst direğe çok yakınsa kaleci uçsa da kurtaramaz)
-    const isUnreachable = (Math.abs(ball.x) > 2.7 && ball.y > 1.7) || (ball.y > 2.15);
-    if (dist < 1.8 && !isUnreachable) saved = true; 
+    // Uzuv bazlı çarpışma kontrolü (Kapatma alanı: 1.4m genişlik, 1.2m yükseklik)
+    const dx = Math.abs(ball.x - keeper.x);
+    const dy = Math.abs(ball.y - keeper.y);
+    const isTouching = (dx < 1.4 && dy < 1.2);
+    
+    // Rastgelelik/Hata payı: Kaleci bazen doğru bölgede olsa bile topu elinden kaçırabilir (Professional Denge)
+    const skillFactor = Math.random() < 0.85; 
+    
+    if (isTouching && skillFactor) saved = true; 
   }
   state = "RESOLVE"; resetTimer = 0;
   ball.saved = saved; // Fizik motorunun topu filede tutması veya sektirmesi için flag'i setliyoruz
@@ -215,7 +220,7 @@ function renderProbs(probs) {
 (async () => {
   try {
     loadMsg.textContent = "On-Device TFLite model yukleniyor (NEON SIMD / WASM)...";
-  ai = await new TFLiteGoalkeeper("models/goalkeeper_ai_9zone.tflite").load();
+    ai = await new TFLiteGoalkeeper("/models/goalkeeper_ai_9zone.tflite").load();
     loadMsg.textContent = "Model hazir - INT8 cikarim aktif";
     loader.style.display = "none";
     loop();

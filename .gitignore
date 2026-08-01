@@ -1,12 +1,20 @@
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.venv/
-venv/
-env/
+# dependencies
+node_modules/
+
+# build artifacts
+dist/
+build/
+android/app/build/
+android/build/
+
+# sensitive files & local settings
+*.jks
+*.keystore
+*.properties
+android/local.properties
+gradle.properties
+.env
 .DS_Store
 
-# Scratch / temp agent artifacts
-_writer.py
-/d
+# logs
+*.log

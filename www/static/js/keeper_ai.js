@@ -17,11 +17,7 @@ export class TFLiteGoalkeeper {
     this.ready = false;
   }
   async load() {
-    if (typeof tflite === 'undefined') {
-      console.error("TFLite is undefined. Ensure tf-tflite.min.js is loaded correctly.");
-      throw new Error("TFLite library not loaded.");
-    }
-    tflite.setWasmPath("https://localhost/static/lib/wasm/");
+    tflite.setWasmPath("static/lib/wasm/");
     this.model = await tflite.loadTFLiteModel(this.modelUrl);
     this.ready = true;
     return this;

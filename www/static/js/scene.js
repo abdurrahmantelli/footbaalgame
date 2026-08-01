@@ -11,7 +11,8 @@ export class Stadium {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0f172a);
     this.scene.fog = new THREE.Fog(0x0f172a, 18, 45);
-    this.camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
+    const fov = innerWidth < 600 ? 70 : 55;
+    this.camera = new THREE.PerspectiveCamera(fov, innerWidth / innerHeight, 0.1, 200);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.setSize(innerWidth, innerHeight);
@@ -77,19 +78,21 @@ export class Stadium {
   }
   _keeper() {
     this.keeper = new THREE.Group();
-    const jm = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.7 });
-    const pm = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+    const jm = new THREE.MeshStandardMaterial({ color: 0x0000ff, roughness: 0.7 });
+    const pm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
     const sm = new THREE.MeshStandardMaterial({ color: 0xfdba74, roughness: 0.8 });
     const gm = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 });
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.3), jm); torso.position.y = 1.15; this.keeper.add(torso);
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 12), sm); head.position.y = 1.72; this.keeper.add(head);
-    const ll = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.8, 0.2), pm); ll.position.set(-0.13, 0.4, 0); this.keeper.add(ll);
-    const lr = ll.clone(); lr.position.x = 0.13; this.keeper.add(lr);
+    // Bacakları hareket ettirebilmek için bağımsız meshler
+    this.legL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.8, 0.2), pm); this.legL.position.set(-0.13, 0.4, 0); this.keeper.add(this.legL);
+    this.legR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.8, 0.2), pm); this.legR.position.set(0.13, 0.4, 0); this.keeper.add(this.legR);
     this.armL = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.7, 0.16), jm); this.armL.position.set(-0.33, 1.25, 0); this.keeper.add(this.armL);
-    this.armR = this.armL.clone(); this.armR.position.x = 0.33; this.keeper.add(this.armR);
+    this.armR = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.7, 0.16), jm); this.armR.position.set(0.33, 1.25, 0); this.keeper.add(this.armR);
     this.gloveL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), gm); this.gloveL.position.set(-0.33, 0.9, 0); this.keeper.add(this.gloveL);
-    this.gloveR = this.gloveL.clone(); this.gloveR.position.x = 0.33; this.keeper.add(this.gloveR);
+    this.gloveR = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), gm); this.gloveR.position.set(0.33, 0.9, 0); this.keeper.add(this.gloveR);
     this.keeper.position.set(0, 1.05, PENALTY_DISTANCE - 0.2);
+    this.keeper.scale.set(1.5, 1.5, 1.5);
     this.scene.add(this.keeper);
   }
   updateBall(b) {
@@ -104,20 +107,22 @@ export class Stadium {
     this.keeper.position.x = kx; this.keeper.position.y = Math.max(ky, BALL_RADIUS);
     this.keeper.position.z = PENALTY_DISTANCE - 0.2;
     
-    // Kalecinin uçuşunu gerçekçi göstermek için gövdeyi atladığı yöne eğeriz.
     if (diving && dir !== 0) {
-      this.keeper.rotation.z = -dir * 1.1;
-      this.keeper.rotation.y = -dir * 0.25;
+      this.keeper.rotation.z = -dir * 0.5;
+      this.armL.rotation.z = dir > 0 ? 0.4 : -0.4;
+      this.armR.rotation.z = dir > 0 ? 0.4 : -0.4;
     } else {
       this.keeper.rotation.z = 0;
-      this.keeper.rotation.y = 0;
+      this.armL.rotation.z = 0;
+      this.armR.rotation.z = 0;
     }
     
-    const stretch = diving ? 0.5 : 0;
-    this.armL.position.x = -0.33 - (dir < 0 ? stretch : 0);
-    this.armR.position.x = 0.33 + (dir > 0 ? stretch : 0);
-    this.gloveL.position.x = this.armL.position.x;
-    this.gloveR.position.x = this.armR.position.x;
+    // Kolların gövdeden ayrılmaması için parent-child ilişkisini koruyoruz
+    // Sadece rotasyonla hareket ettiriyoruz
+    this.armL.position.set(-0.33, 1.25, 0);
+    this.armR.position.set(0.33, 1.25, 0);
+    this.gloveL.position.set(0, -0.35, 0);
+    this.gloveR.position.set(0, -0.35, 0);
   }
   highlightZone(z) {
     for (const m of this.zoneMeshes) {
@@ -126,9 +131,15 @@ export class Stadium {
     }
   }
   updateCamera(b) {
-    const camDist = 2.2, camHeight = 2 + b.y * 0.3, camLag = b.x * 0.25;
-    this.camera.position.set(camLag + b.x * 0.08, camHeight, b.z - camDist);
-    this.camera.lookAt(b.x * 0.35, 1 + b.y * 0.2, PENALTY_DISTANCE);
+    // Köşelerde kalecinin kaybolmaması için açıyı biraz daha geriye ve merkeze çekiyoruz
+    const camDist = 8.0; 
+    const camHeight = 3.0;
+    const camLag = b.x * 0.1;
+    
+    const targetZ = -4.5;
+    
+    this.camera.position.set(camLag, camHeight, targetZ);
+    this.camera.lookAt(0, 1.2, PENALTY_DISTANCE);
   }
   getGoalTargetCoords(screenX, screenY) {
     const mx = (screenX / window.innerWidth) * 2 - 1;
@@ -142,8 +153,10 @@ export class Stadium {
     return { x: targetX, y: targetY };
   }
   onResize() {
-    this.camera.aspect = innerWidth / innerHeight; this.camera.updateProjectionMatrix();
-    this.renderer.setSize(innerWidth, innerHeight);
+    this.camera.fov = window.innerWidth < 600 ? 70 : 55;
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
   }
   render() { this.renderer.render(this.scene, this.camera); }
 }

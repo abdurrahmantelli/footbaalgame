@@ -41,8 +41,12 @@ export class Ball {
     this.x += this.vx * dt; this.y += this.vy * dt; this.z += this.vz * dt;
     if (this.y < BALL_RADIUS && this.vy < 0) { this.y = BALL_RADIUS; this.vy = -this.vy * 0.4; }
     if (this.z >= PENALTY_DISTANCE) {
-      if (!this.saved && this.z < PENALTY_DISTANCE + 0.4) {
-        this.vx *= 0.8; this.vy = Math.min(this.vy, 0) - 1.5; this.vz *= 0.1;
+      if (this.saved) {
+        // Kurtarılan topun fiziksel tepkisi (savuşturma)
+        this.active = true; // Sektirme için aktif tut
+      } else if (this.z < PENALTY_DISTANCE + 0.6) {
+        // Gol olan top fileye takılır
+        this.vx *= 0.7; this.vy = Math.min(this.vy, 0) - 1.2; this.vz *= 0.05;
       } else {
         this.active = false;
       }
